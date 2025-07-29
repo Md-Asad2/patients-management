@@ -4,6 +4,7 @@ import com.medserv.patientservice.dto.PatientRequestDTO;
 import com.medserv.patientservice.dto.PatientResponseDTO;
 import com.medserv.patientservice.exception.EmailAlreadyExistsException;
 import com.medserv.patientservice.exception.PatientNotFoundException;
+import com.medserv.patientservice.grpc.BillingServiceGrpcClient;
 import com.medserv.patientservice.mapper.PatientMapper;
 import com.medserv.patientservice.model.Patient;
 import com.medserv.patientservice.repository.PatientRepository;
@@ -17,9 +18,11 @@ import java.util.UUID;
 public class PatientServiceImpl implements PatientService {
 
     private final PatientRepository patientRepository;
+    private final BillingServiceGrpcClient billingServiceGrpcClient;
 
-    public PatientServiceImpl(PatientRepository patientRepository) {
+    public PatientServiceImpl(PatientRepository patientRepository, BillingServiceGrpcClient billingServiceGrpcClient) {
         this.patientRepository = patientRepository;
+        this.billingServiceGrpcClient = billingServiceGrpcClient;
     }
 
     @Override
@@ -33,6 +36,8 @@ public class PatientServiceImpl implements PatientService {
         if (patientRepository.existsByEmail(patientRequestDTO.getEmail()))
             throw new EmailAlreadyExistsException("A patient with this email already exists: " + patientRequestDTO.getEmail());
         Patient newPatient = patientRepository.save(PatientMapper.toEntity(patientRequestDTO));
+
+        billingServiceGrpcClient.createBillingAccount(newPatient.getId().toString(), newPatient.getName(), newPatient.getEmail());
         return PatientMapper.toDTO(newPatient);
     }
 
